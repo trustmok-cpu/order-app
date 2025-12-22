@@ -256,6 +256,10 @@ function App() {
         await loadMenus()
         // 주문 목록 새로고침
         await loadOrders()
+        // 전체 주문 목록도 새로고침 (오늘 판매 현황용)
+        if (currentView === 'admin') {
+          await loadAllOrders()
+        }
       }
     } catch (error) {
       console.error('주문 생성 오류:', error)
@@ -528,6 +532,104 @@ function App() {
                        selectedStatType === 'received' ? '주문 접수 내역' :
                        selectedStatType === 'preparing' ? '제조 중 내역' :
                        selectedStatType === 'completed' ? '제조 완료 내역' : ''
+    
+    // 오늘 판매한 커피 종류 및 수량 계산
+    const getTodaySales = () => {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const todayEnd = new Date(today)
+      todayEnd.setHours(23, 59, 59, 999)
+      
+      // 오늘 날짜의 주문 필터링 (completed 상태만)
+      const todayOrders = allOrders.filter(order => {
+        const orderDate = new Date(order.orderDate)
+        return orderDate >= today && orderDate <= todayEnd && order.status === 'completed'
+      })
+      
+      // 메뉴별 수량 집계
+      const salesMap = new Map()
+      
+      todayOrders.forEach(order => {
+        order.items.forEach(item => {
+          const menuName = item.menuName
+          const quantity = item.quantity
+          
+          if (salesMap.has(menuName)) {
+            salesMap.set(menuName, salesMap.get(menuName) + quantity)
+          } else {
+            salesMap.set(menuName, quantity)
+          }
+        })
+      })
+      
+      // 배열로 변환하고 수량 내림차순 정렬
+      const salesArray = Array.from(salesMap.entries())
+        .map(([menuName, quantity]) => ({ menuName, quantity }))
+        .sort((a, b) => b.quantity - a.quantity)
+      
+      return salesArray
+    }
+    
+    const todaySales = getTodaySales()
+    const todayDateStr = new Date().toLocaleDateString('ko-KR', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    })
+    
+    // 일자별, 메뉴별 판매 현황 계산
+    const getDateMenuSales = () => {
+      // 완료된 주문만 필터링
+      const completedOrders = allOrders.filter(order => order.status === 'completed')
+      
+      // 일자별, 메뉴별 수량 집계
+      const salesMap = new Map() // key: "날짜|메뉴명", value: 수량
+      const dateSet = new Set()
+      const menuSet = new Set()
+      
+      completedOrders.forEach(order => {
+        const orderDate = new Date(order.orderDate)
+        const dateStr = orderDate.toLocaleDateString('ko-KR', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        })
+        
+        dateSet.add(dateStr)
+        
+        order.items.forEach(item => {
+          const menuName = item.menuName
+          menuSet.add(menuName)
+          
+          const key = `${dateStr}|${menuName}`
+          const quantity = item.quantity
+          
+          if (salesMap.has(key)) {
+            salesMap.set(key, salesMap.get(key) + quantity)
+          } else {
+            salesMap.set(key, quantity)
+          }
+        })
+      })
+      
+      // 일자 목록 정렬 (최신순)
+      const dates = Array.from(dateSet).sort((a, b) => {
+        const dateA = new Date(a.replace(/\./g, '/'))
+        const dateB = new Date(b.replace(/\./g, '/'))
+        return dateB - dateA
+      })
+      
+      // 메뉴 목록 정렬 (알파벳순)
+      const menus = Array.from(menuSet).sort()
+      
+      return {
+        dates,
+        menus,
+        salesMap
+      }
+    }
+    
+    const dateMenuSales = getDateMenuSales()
 
     return (
       <>
@@ -659,6 +761,108 @@ function App() {
               )
             })}
           </div>
+        </div>
+
+        {/* 오늘 판매 현황 */}
+        <div className="sales-section">
+          <h2>오늘 판매 현황</h2>
+          <p className="sales-date">{todayDateStr}</p>
+          {todaySales.length === 0 ? (
+            <p className="empty-sales">오늘 판매된 메뉴가 없습니다.</p>
+          ) : (
+            <div className="sales-table-container">
+              <table className="sales-table">
+                <thead>
+                  <tr>
+                    <th className="sales-table-header">순위</th>
+                    <th className="sales-table-header">메뉴명</th>
+                    <th className="sales-table-header">판매 수량</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {todaySales.map((sale, index) => (
+                    <tr key={index} className="sales-table-row">
+                      <td className="sales-table-cell sales-rank">{index + 1}</td>
+                      <td className="sales-table-cell sales-menu-name">{sale.menuName}</td>
+                      <td className="sales-table-cell sales-quantity">{sale.quantity}개</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* 일자별, 메뉴별 판매 현황 */}
+        <div className="sales-section">
+          <h2>일자별, 메뉴별 판매 현황</h2>
+          {dateMenuSales.dates.length === 0 || dateMenuSales.menus.length === 0 ? (
+            <p className="empty-sales">판매 데이터가 없습니다.</p>
+          ) : (
+            <div className="date-menu-table-container">
+              <table className="date-menu-table">
+                <thead>
+                  <tr>
+                    <th className="date-menu-table-header date-header">일자</th>
+                    {dateMenuSales.menus.map((menu, idx) => (
+                      <th key={idx} className="date-menu-table-header menu-header">
+                        {menu}
+                      </th>
+                    ))}
+                    <th className="date-menu-table-header total-header">합계</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dateMenuSales.dates.map((date, dateIdx) => {
+                    const rowTotal = dateMenuSales.menus.reduce((sum, menu) => {
+                      const key = `${date}|${menu}`
+                      return sum + (dateMenuSales.salesMap.get(key) || 0)
+                    }, 0)
+                    
+                    return (
+                      <tr key={dateIdx} className="date-menu-table-row">
+                        <td className="date-menu-table-cell date-cell">{date}</td>
+                        {dateMenuSales.menus.map((menu, menuIdx) => {
+                          const key = `${date}|${menu}`
+                          const quantity = dateMenuSales.salesMap.get(key) || 0
+                          return (
+                            <td key={menuIdx} className="date-menu-table-cell quantity-cell">
+                              {quantity > 0 ? quantity : '-'}
+                            </td>
+                          )
+                        })}
+                        <td className="date-menu-table-cell total-cell">{rowTotal}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="date-menu-table-footer">
+                    <td className="date-menu-table-cell total-label">합계</td>
+                    {dateMenuSales.menus.map((menu, menuIdx) => {
+                      const colTotal = dateMenuSales.dates.reduce((sum, date) => {
+                        const key = `${date}|${menu}`
+                        return sum + (dateMenuSales.salesMap.get(key) || 0)
+                      }, 0)
+                      return (
+                        <td key={menuIdx} className="date-menu-table-cell total-cell">
+                          {colTotal}
+                        </td>
+                      )
+                    })}
+                    <td className="date-menu-table-cell grand-total-cell">
+                      {dateMenuSales.dates.reduce((sum, date) => {
+                        return sum + dateMenuSales.menus.reduce((menuSum, menu) => {
+                          const key = `${date}|${menu}`
+                          return menuSum + (dateMenuSales.salesMap.get(key) || 0)
+                        }, 0)
+                      }, 0)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* 주문 현황 */}

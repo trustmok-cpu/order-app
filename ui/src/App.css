@@ -571,7 +571,215 @@ main {
 .inventory-controls {
   display: flex;
   gap: 0.5rem;
-  justify-content: center;
+}
+
+/* 오늘 판매 현황 스타일 */
+.sales-section {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  background-color: #fafafa;
+  margin-bottom: 2rem;
+}
+
+.sales-section h2 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.sales-date {
+  margin: 0 0 1rem 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.empty-sales {
+  text-align: center;
+  padding: 2rem;
+  color: #999;
+}
+
+.sales-table-container {
+  overflow-x: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background-color: #ffffff;
+}
+
+.sales-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #ffffff;
+}
+
+.sales-table-header {
+  background-color: #2196F3;
+  color: #ffffff;
+  padding: 1rem;
+  text-align: left;
+  font-weight: bold;
+  font-size: 1rem;
+  border-bottom: 2px solid #1976D2;
+}
+
+.sales-table-header:first-child {
+  text-align: center;
+  width: 80px;
+}
+
+.sales-table-header:last-child {
+  text-align: right;
+}
+
+.sales-table-row {
+  border-bottom: 1px solid #e0e0e0;
+  transition: background-color 0.2s;
+}
+
+.sales-table-row:hover {
+  background-color: #f5f5f5;
+}
+
+.sales-table-row:last-child {
+  border-bottom: none;
+}
+
+.sales-table-cell {
+  padding: 1rem;
+  font-size: 1rem;
+  color: #333;
+}
+
+.sales-table-cell.sales-rank {
+  text-align: center;
+  font-weight: bold;
+  color: #666;
+  width: 80px;
+}
+
+.sales-table-cell.sales-menu-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.sales-table-cell.sales-quantity {
+  text-align: right;
+  font-weight: bold;
+  color: #2196F3;
+  font-size: 1.1rem;
+}
+
+/* 일자별, 메뉴별 판매 현황 테이블 스타일 */
+.date-menu-table-container {
+  overflow-x: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background-color: #ffffff;
+}
+
+.date-menu-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #ffffff;
+  min-width: 500px;
+}
+
+.date-menu-table-header {
+  background-color: #2196F3;
+  color: #ffffff;
+  padding: 1rem;
+  text-align: center;
+  font-weight: bold;
+  font-size: 0.95rem;
+  border: 1px solid #1976D2;
+  white-space: nowrap;
+}
+
+.date-menu-table-header.date-header {
+  text-align: left;
+  min-width: 120px;
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background-color: #1976D2;
+}
+
+.date-menu-table-header.menu-header {
+  min-width: 100px;
+}
+
+.date-menu-table-header.total-header {
+  background-color: #1565C0;
+  font-weight: bold;
+}
+
+.date-menu-table-row {
+  border-bottom: 1px solid #e0e0e0;
+  transition: background-color 0.2s;
+}
+
+.date-menu-table-row:hover {
+  background-color: #f5f5f5;
+}
+
+.date-menu-table-cell {
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  text-align: center;
+  border: 1px solid #e0e0e0;
+}
+
+.date-menu-table-cell.date-cell {
+  text-align: left;
+  font-weight: 500;
+  color: #333;
+  background-color: #fafafa;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  border-right: 2px solid #e0e0e0;
+}
+
+.date-menu-table-row:hover .date-menu-table-cell.date-cell {
+  background-color: #f0f0f0;
+}
+
+.date-menu-table-cell.quantity-cell {
+  color: #333;
+  font-weight: 500;
+}
+
+.date-menu-table-cell.total-cell {
+  font-weight: bold;
+  color: #2196F3;
+  background-color: #f5f5f5;
+}
+
+.date-menu-table-footer {
+  background-color: #fafafa;
+  font-weight: bold;
+}
+
+.date-menu-table-footer .total-label {
+  text-align: left;
+  color: #333;
+  background-color: #e3f2fd;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  border-right: 2px solid #e0e0e0;
+}
+
+.date-menu-table-footer .total-cell {
+  background-color: #e3f2fd;
+  color: #1976D2;
+}
+
+.date-menu-table-footer .grand-total-cell {
+  background-color: #bbdefb;
+  color: #1565C0;
+  font-size: 1.05rem;
 }
 
 .stock-button {

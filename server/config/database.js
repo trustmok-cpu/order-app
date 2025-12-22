@@ -6,16 +6,38 @@ dotenv.config();
 const { Pool } = pg;
 
 // 데이터베이스 연결 풀 생성
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'order_app',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || '',
-  max: 20, // 최대 연결 수
-  idleTimeoutMillis: 30000, // 유휴 연결 타임아웃
-  connectionTimeoutMillis: 2000, // 연결 타임아웃
-});
+// Render.com의 Internal Database URL을 지원
+let poolConfig = {};
+
+if (process.env.DATABASE_URL) {
+  // Render.com의 Internal Database URL 사용
+  poolConfig = {
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  };
+} else {
+  // 개별 환경 변수 사용
+  poolConfig = {
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 5432,
+    database: process.env.DB_NAME || 'order_app',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || '',
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  };
+  
+  // 프로덕션 환경에서 SSL 사용
+  if (process.env.NODE_ENV === 'production') {
+    poolConfig.ssl = { rejectUnauthorized: false };
+  }
+}
+
+const pool = new Pool(poolConfig);
 
 // 연결 테스트
 pool.on('connect', () => {
