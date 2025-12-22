@@ -54,7 +54,36 @@ npm start
 
 ## 데이터베이스
 
-PostgreSQL 데이터베이스를 사용합니다. 데이터베이스 스키마는 `docs/PRD.md` 파일의 6.4.2 섹션을 참고하세요.
+PostgreSQL 데이터베이스를 사용합니다.
+
+### 데이터베이스 설정
+
+1. PostgreSQL에서 데이터베이스 생성:
+```sql
+CREATE DATABASE order_app;
+```
+
+2. `.env` 파일에 데이터베이스 연결 정보 설정:
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=order_app
+DB_USER=postgres
+DB_PASSWORD=your_password
+```
+
+3. 데이터베이스 초기화 (테이블 생성 및 초기 데이터 삽입):
+```bash
+npm run db:init
+```
+
+이 명령어는 다음을 수행합니다:
+- 테이블 생성 (menus, options, orders, order_items, order_item_options)
+- 인덱스 생성
+- 트리거 생성 (updated_at 자동 업데이트)
+- 초기 메뉴 및 옵션 데이터 삽입
+
+데이터베이스 스키마는 `docs/PRD.md` 파일의 6.4.2 섹션을 참고하세요.
 
 ## 개발 가이드
 
