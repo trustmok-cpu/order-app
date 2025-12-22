@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import pool, { testConnection } from './config/database.js';
+import menusRouter from './routes/menus.js';
+import ordersRouter from './routes/orders.js';
 
 // 환경 변수 로드
 dotenv.config();
@@ -37,6 +39,10 @@ app.get('/health', async (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// API 라우터
+app.use('/api/menus', menusRouter);
+app.use('/api/orders', ordersRouter);
 
 // 서버 시작
 app.listen(PORT, async () => {

@@ -1,93 +1,125 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
-
-// 임시 메뉴 데이터
-const menuData = [
-  {
-    id: 1,
-    name: '아메리카노(ICE)',
-    price: 4000,
-    description: '시원한 아이스 아메리카노',
-    image: '/americano-ice.jpg',
-    options: [
-      { id: 1, name: '샷 추가', price: 500 },
-      { id: 2, name: '시럽 추가', price: 0 }
-    ]
-  },
-  {
-    id: 2,
-    name: '아메리카노(HOT)',
-    price: 4000,
-    description: '따뜻한 핫 아메리카노',
-    image: '/americano-hot.jpg',
-    options: [
-      { id: 1, name: '샷 추가', price: 500 },
-      { id: 2, name: '시럽 추가', price: 0 }
-    ]
-  },
-  {
-    id: 3,
-    name: '카페라떼',
-    price: 5000,
-    description: '부드러운 카페라떼',
-    image: '/caffe-latte.jpg',
-    options: [
-      { id: 1, name: '샷 추가', price: 500 },
-      { id: 2, name: '시럽 추가', price: 0 }
-    ]
-  },
-  {
-    id: 4,
-    name: '카푸치노',
-    price: 5500,
-    description: '우유 거품이 풍부한 카푸치노',
-    image: '',
-    options: [
-      { id: 1, name: '샷 추가', price: 500 },
-      { id: 2, name: '시럽 추가', price: 0 }
-    ]
-  },
-  {
-    id: 5,
-    name: '바닐라라떼',
-    price: 5500,
-    description: '달콤한 바닐라라떼',
-    image: '',
-    options: [
-      { id: 1, name: '샷 추가', price: 500 },
-      { id: 2, name: '시럽 추가', price: 0 }
-    ]
-  },
-  {
-    id: 6,
-    name: '에스프레소',
-    price: 3500,
-    description: '진한 에스프레소',
-    image: '',
-    options: [
-      { id: 1, name: '샷 추가', price: 500 },
-      { id: 2, name: '시럽 추가', price: 0 }
-    ]
-  }
-]
+import { menuAPI, orderAPI } from './api.js'
 
 function App() {
   const [currentView, setCurrentView] = useState('order') // 'order' or 'admin'
   const [cart, setCart] = useState([])
   const [selectedOptions, setSelectedOptions] = useState({})
   
+  // 메뉴 데이터 (API에서 가져옴)
+  const [menuData, setMenuData] = useState([])
+  const [loading, setLoading] = useState(true)
+  
   // 주문 데이터 (주문하기 화면과 관리자 화면에서 공유)
   const [orders, setOrders] = useState([])
   
-  // 재고 데이터 (관리자 화면에서 관리)
-  const [inventory, setInventory] = useState([
-    { menuId: 1, menuName: '아메리카노(ICE)', stock: 10 },
-    { menuId: 2, menuName: '아메리카노(HOT)', stock: 8 },
-    { menuId: 3, menuName: '카페라떼', stock: 5 },
-    { menuId: 4, menuName: '카푸치노', stock: 7 },
-    { menuId: 5, menuName: '바닐라라떼', stock: 6 },
-    { menuId: 6, menuName: '에스프레소', stock: 9 }
-  ])
+  // 전체 주문 데이터 (모달에서 사용)
+  const [allOrders, setAllOrders] = useState([])
+  
+  // 재고 데이터 (API에서 가져옴)
+  const [inventory, setInventory] = useState([])
+  
+  // 통계 데이터
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    receivedOrders: 0,
+    preparingOrders: 0,
+    completedOrders: 0
+  })
+  
+  // 모달 상태 (선택된 통계 타입)
+  const [selectedStatType, setSelectedStatType] = useState(null)
+  
+  // 메뉴 및 재고 데이터 로드
+  useEffect(() => {
+    loadMenus()
+    loadOrders()
+  }, [])
+  
+  // 관리자 화면 진입 시 재고 및 주문 데이터 새로고침
+  useEffect(() => {
+    if (currentView === 'admin') {
+      loadMenus(true) // 재고 정보 포함
+      loadOrders()
+      loadAllOrders() // 전체 주문 목록도 로드
+      loadStats()
+    }
+  }, [currentView])
+  
+  // 주문 목록 변경 시 통계 업데이트
+  useEffect(() => {
+    if (currentView === 'admin') {
+      loadStats()
+    }
+  }, [orders, currentView])
+  
+  // 메뉴 데이터 로드
+  const loadMenus = async (includeStock = false) => {
+    try {
+      setLoading(true)
+      const response = await menuAPI.getMenus(includeStock)
+      if (response.success) {
+        setMenuData(response.data)
+        
+        // 재고 정보 추출 (API에서 항상 재고 정보를 포함하므로)
+        const stockData = response.data.map(menu => ({
+          menuId: menu.id,
+          menuName: menu.name,
+          stock: menu.stock || 0
+        }))
+        setInventory(stockData)
+      }
+    } catch (error) {
+      console.error('메뉴 로드 오류:', error)
+      alert('메뉴를 불러오는 중 오류가 발생했습니다.')
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  // 주문 목록 로드
+  const loadOrders = async () => {
+    try {
+      const response = await orderAPI.getOrders('pending,received,preparing')
+      if (response.success) {
+        setOrders(response.data)
+      }
+    } catch (error) {
+      console.error('주문 목록 로드 오류:', error)
+    }
+  }
+  
+  // 전체 주문 목록 로드 (모달용)
+  const loadAllOrders = async () => {
+    try {
+      const response = await orderAPI.getOrders('')
+      if (response.success) {
+        setAllOrders(response.data)
+      }
+    } catch (error) {
+      console.error('전체 주문 목록 로드 오류:', error)
+    }
+  }
+  
+  // 통계 로드
+  const loadStats = async () => {
+    try {
+      const response = await orderAPI.getStats()
+      if (response.success) {
+        setStats(response.data)
+      }
+    } catch (error) {
+      console.error('통계 로드 오류:', error)
+      // 오류 시 로컬 데이터로 계산
+      setStats({
+        totalOrders: orders.length,
+        receivedOrders: orders.filter(o => o.status === 'received').length,
+        preparingOrders: orders.filter(o => o.status === 'preparing').length,
+        completedOrders: orders.filter(o => o.status === 'completed').length
+      })
+    }
+  }
 
   // 옵션 선택/해제
   const toggleOption = (menuId, optionId) => {
@@ -204,62 +236,36 @@ function App() {
   }
 
   // 주문하기
-  const handleOrder = () => {
+  const handleOrder = async () => {
     if (cart.length === 0) return
     
-    // 재고 확인
-    const insufficientStock = []
-    const stockCheck = cart.every(item => {
-      const inventoryItem = inventory.find(inv => inv.menuId === item.menuId)
-      if (!inventoryItem) {
-        insufficientStock.push(`${item.menuName} (재고 정보 없음)`)
-        return false
-      }
-      if (inventoryItem.stock < item.quantity) {
-        insufficientStock.push(`${item.menuName} (재고: ${inventoryItem.stock}개, 주문: ${item.quantity}개)`)
-        return false
-      }
-      return true
-    })
-    
-    // 재고 부족 시 주문 실패
-    if (!stockCheck) {
-      alert(`주문 실패: 재고가 부족합니다.\n\n${insufficientStock.join('\n')}`)
-      return
-    }
-    
-    // 재고 차감
-    const updatedInventory = inventory.map(invItem => {
-      const cartItem = cart.find(item => item.menuId === invItem.menuId)
-      if (cartItem) {
-        return {
-          ...invItem,
-          stock: invItem.stock - cartItem.quantity
-        }
-      }
-      return invItem
-    })
-    setInventory(updatedInventory)
-    
-    // 주문 생성
-    const newOrder = {
-      id: Date.now(),
-      orderDate: new Date(),
-      items: cart.map(item => ({
+    try {
+      // API로 주문 생성
+      const orderItems = cart.map(item => ({
         menuId: item.menuId,
-        menuName: item.menuName,
         quantity: item.quantity,
-        price: item.basePrice,
-        selectedOptions: item.selectedOptions,
-        totalPrice: item.totalPrice
-      })),
-      totalAmount: calculateTotal(),
-      status: 'pending' // pending -> received -> preparing -> completed
+        selectedOptionIds: item.selectedOptions.map(opt => opt.id)
+      }))
+      
+      const response = await orderAPI.createOrder(orderItems)
+      
+      if (response.success) {
+        alert(`주문이 완료되었습니다!\n총 금액: ${response.data.totalAmount.toLocaleString()}원`)
+        setCart([])
+        // 메뉴 및 재고 정보 새로고침
+        await loadMenus()
+        // 주문 목록 새로고침
+        await loadOrders()
+      }
+    } catch (error) {
+      console.error('주문 생성 오류:', error)
+      if (error.message.includes('재고가 부족')) {
+        // 재고 부족 오류는 API에서 상세 정보를 반환하므로 그대로 표시
+        alert(`주문 실패: ${error.message}`)
+      } else {
+        alert(`주문 생성 중 오류가 발생했습니다: ${error.message}`)
+      }
     }
-    
-    setOrders([newOrder, ...orders])
-    alert(`주문이 완료되었습니다!\n총 금액: ${calculateTotal().toLocaleString()}원`)
-    setCart([])
   }
 
   // 가격 포맷팅
@@ -268,32 +274,48 @@ function App() {
   }
 
   // 재고 증가/감소
-  const updateStock = (menuId, delta) => {
-    setInventory(prev => prev.map(item => 
-      item.menuId === menuId 
-        ? { ...item, stock: Math.max(0, item.stock + delta) }
-        : item
-    ))
-  }
-
-  // 주문 상태 변경
-  const updateOrderStatus = (orderId, newStatus) => {
-    setOrders(prev => prev.map(order =>
-      order.id === orderId ? { ...order, status: newStatus } : order
-    ))
-  }
-
-  // 대시보드 통계 계산
-  const getDashboardStats = () => {
-    return {
-      totalOrders: orders.length,
-      receivedOrders: orders.filter(o => o.status === 'received').length,
-      preparingOrders: orders.filter(o => o.status === 'preparing').length,
-      completedOrders: orders.filter(o => o.status === 'completed').length
+  const updateStock = async (menuId, delta) => {
+    try {
+      const response = await menuAPI.updateStock(menuId, delta)
+      if (response.success) {
+        // 재고 정보 업데이트
+        setInventory(prev => prev.map(item => 
+          item.menuId === menuId 
+            ? { ...item, stock: response.data.stock }
+            : item
+        ))
+        // 메뉴 데이터도 업데이트
+        setMenuData(prev => prev.map(menu =>
+          menu.id === menuId
+            ? { ...menu, stock: response.data.stock }
+            : menu
+        ))
+      }
+    } catch (error) {
+      console.error('재고 수정 오류:', error)
+      alert(`재고 수정 중 오류가 발생했습니다: ${error.message}`)
     }
   }
 
-  const stats = getDashboardStats()
+  // 주문 상태 변경
+  const updateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const response = await orderAPI.updateOrderStatus(orderId, newStatus)
+      if (response.success) {
+        // 주문 목록 업데이트
+        await loadOrders()
+        // 전체 주문 목록도 업데이트 (모달용)
+        await loadAllOrders()
+        // 통계 업데이트
+        await loadStats()
+      }
+    } catch (error) {
+      console.error('주문 상태 변경 오류:', error)
+      alert(`주문 상태 변경 중 오류가 발생했습니다: ${error.message}`)
+    }
+  }
+
+  // 대시보드 통계는 loadStats에서 API로 가져옴
 
   // 주문하기 화면
   const OrderScreen = () => {
@@ -454,11 +476,58 @@ function App() {
       const minutes = d.getMinutes().toString().padStart(2, '0')
       return `${month}월 ${day}일 ${hours}:${minutes}`
     }
+    
+    // 주문 상태 한글 변환
+    const getStatusLabel = (status) => {
+      const statusMap = {
+        'pending': '대기',
+        'received': '주문 접수',
+        'preparing': '제조 중',
+        'completed': '제조 완료',
+        'cancelled': '취소됨'
+      }
+      return statusMap[status] || status
+    }
 
     // 주문 목록 (pending, received, preparing 상태 표시)
     const pendingOrders = orders.filter(o => 
       o.status === 'pending' || o.status === 'received' || o.status === 'preparing'
     )
+    
+    // 통계 클릭 핸들러
+    const handleStatClick = async (statType) => {
+      setSelectedStatType(statType)
+      await loadAllOrders() // 최신 데이터 로드
+    }
+    
+    // 모달 닫기
+    const closeModal = () => {
+      setSelectedStatType(null)
+    }
+    
+    // 필터링된 주문 목록 가져오기
+    const getFilteredOrders = () => {
+      if (!selectedStatType) return []
+      
+      switch (selectedStatType) {
+        case 'total':
+          return allOrders
+        case 'received':
+          return allOrders.filter(o => o.status === 'received')
+        case 'preparing':
+          return allOrders.filter(o => o.status === 'preparing')
+        case 'completed':
+          return allOrders.filter(o => o.status === 'completed')
+        default:
+          return []
+      }
+    }
+    
+    const filteredOrders = getFilteredOrders()
+    const modalTitle = selectedStatType === 'total' ? '총 주문 내역' :
+                       selectedStatType === 'received' ? '주문 접수 내역' :
+                       selectedStatType === 'preparing' ? '제조 중 내역' :
+                       selectedStatType === 'completed' ? '제조 완료 내역' : ''
 
     return (
       <>
@@ -466,24 +535,95 @@ function App() {
         <div className="admin-dashboard">
           <h2>관리자 대시보드</h2>
           <div className="dashboard-stats">
-            <div className="stat-item">
+            <div 
+              className="stat-item clickable" 
+              onClick={() => handleStatClick('total')}
+              title="클릭하여 상세 내역 보기"
+            >
               <span className="stat-label">총 주문</span>
               <span className="stat-value">{stats.totalOrders}</span>
             </div>
-            <div className="stat-item">
+            <div 
+              className="stat-item clickable" 
+              onClick={() => handleStatClick('received')}
+              title="클릭하여 상세 내역 보기"
+            >
               <span className="stat-label">주문 접수</span>
               <span className="stat-value">{stats.receivedOrders}</span>
             </div>
-            <div className="stat-item">
+            <div 
+              className="stat-item clickable" 
+              onClick={() => handleStatClick('preparing')}
+              title="클릭하여 상세 내역 보기"
+            >
               <span className="stat-label">제조 중</span>
               <span className="stat-value">{stats.preparingOrders}</span>
             </div>
-            <div className="stat-item">
+            <div 
+              className="stat-item clickable" 
+              onClick={() => handleStatClick('completed')}
+              title="클릭하여 상세 내역 보기"
+            >
               <span className="stat-label">제조 완료</span>
               <span className="stat-value">{stats.completedOrders}</span>
             </div>
           </div>
         </div>
+        
+        {/* 상세 내역 모달 */}
+        {selectedStatType && (
+          <div className="modal-overlay" onClick={closeModal}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>{modalTitle}</h2>
+                <button className="modal-close" onClick={closeModal}>×</button>
+              </div>
+              <div className="modal-body">
+                {filteredOrders.length === 0 ? (
+                  <p className="empty-orders">해당 상태의 주문이 없습니다.</p>
+                ) : (
+                  <div className="orders-list-modal">
+                    {filteredOrders.map(order => (
+                      <div key={order.id} className="order-item-modal">
+                        <div className="order-info-modal">
+                          <div className="order-header-modal">
+                            <div className="order-time">{formatDate(order.orderDate)}</div>
+                            <div className="order-status-badge" style={{
+                              backgroundColor: order.status === 'completed' ? '#4caf50' :
+                                              order.status === 'preparing' ? '#2196F3' :
+                                              order.status === 'received' ? '#ff9800' :
+                                              '#9e9e9e',
+                              color: '#fff',
+                              padding: '0.25rem 0.75rem',
+                              borderRadius: '12px',
+                              fontSize: '0.85rem',
+                              fontWeight: 'bold'
+                            }}>
+                              {getStatusLabel(order.status)}
+                            </div>
+                          </div>
+                          <div className="order-details">
+                            {order.items.map((item, idx) => (
+                              <span key={idx} className="order-menu">
+                                {item.menuName}
+                                {item.selectedOptions && item.selectedOptions.length > 0 && (
+                                  ` (${item.selectedOptions.map(opt => opt.optionName || opt.name).join(', ')})`
+                                )}
+                                {' x '}
+                                {item.quantity}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="order-amount">{formatPrice(order.totalAmount)}원</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 재고 현황 */}
         <div className="inventory-section">
@@ -536,8 +676,8 @@ function App() {
                       {order.items.map((item, idx) => (
                         <span key={idx} className="order-menu">
                           {item.menuName}
-                          {item.selectedOptions.length > 0 && (
-                            ` (${item.selectedOptions.map(opt => opt.name).join(', ')})`
+                          {item.selectedOptions && item.selectedOptions.length > 0 && (
+                            ` (${item.selectedOptions.map(opt => opt.optionName || opt.name).join(', ')})`
                           )}
                           {' x '}
                           {item.quantity}
