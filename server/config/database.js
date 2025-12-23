@@ -10,10 +10,14 @@ const { Pool } = pg;
 let poolConfig = {};
 
 if (process.env.DATABASE_URL) {
-  // Render.com의 Internal Database URL 사용
+  // Render.com의 Internal/External Database URL 사용
+  // Render 데이터베이스는 항상 SSL이 필요함
+  const isRenderDB = process.env.DATABASE_URL.includes('render.com') || 
+                     process.env.DATABASE_URL.includes('onrender.com');
+  
   poolConfig = {
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    ssl: isRenderDB ? { rejectUnauthorized: false } : false,
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
@@ -31,8 +35,13 @@ if (process.env.DATABASE_URL) {
     connectionTimeoutMillis: 2000,
   };
   
-  // 프로덕션 환경에서 SSL 사용
-  if (process.env.NODE_ENV === 'production') {
+  // Render 호스트인 경우 SSL 사용
+  const isRenderHost = process.env.DB_HOST && (
+    process.env.DB_HOST.includes('render.com') || 
+    process.env.DB_HOST.includes('onrender.com')
+  );
+  
+  if (isRenderHost || process.env.NODE_ENV === 'production') {
     poolConfig.ssl = { rejectUnauthorized: false };
   }
 }
